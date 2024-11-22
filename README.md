@@ -1,3 +1,0 @@
-# katherinemudd.github.io
-
-# ....

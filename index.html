@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My experiment</title>
+    <script src="https://unpkg.com/jspsych@8.0.2"></script> <! -- general jspsych -->
+    <link href="https://unpkg.com/jspsych@8.0.2/css/jspsych.css" rel="stylesheet" type="text/css" /> <! -- stylesheet, formatting, etc -->
+    <script src="https://unpkg.com/@jspsych/plugin-instructions@1.1.4"></script> <! -- instructions -->
+    <script src="jspsych/plugin-html-keyboard-response.js"></script>
+    <script src="jspsych/plugin-image-keyboard-response.js"></script>
+    <script src="jspsych/plugin-initialize-camera.js"></script>
+    <script src="jspsych/plugin-mirror-camera.js"></script>
+    <script src="jspsych/plugin-html-button-response.js"></script>
+    <script src="jspsych/extension-record-video.js"></script>
+    <script src="jspsych/plugin-external-html.js"></script>
+    <script src="jspsych/plugin-survey-multi-choice.js"></script>
+
+  <style> 
+.set-margins {
+    text-align: justify; margin: 20px 100px; /* Top/Bottom, Left/Right margins */
+}
+
+.center-text {
+    text-align: center; /* Center the text */
+}
+
+.jspsych-survey-multi-choice-option {
+    text-align: center; /* Centers the text within each option */
+} 
+
+/* Center the container of options */
+.jspsych-survey-multi-choice-question {
+    display: flex;
+    flex-direction: column; /* Stack options vertically */
+    align-items: center; /* Center the options horizontally */
+}
+
+/* Match the button styles */
+.jspsych-external-html-button {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+}
+
+.jspsych-external-html-button:hover {
+    background-color: #0056b3;
+}
+
+  </style>
+
+  </head>
+  <body></body>
+  <script>
+
+
+    /* initialize jsPsych */
+    var jsPsych = initJsPsych({
+        show_progress_bar: true,
+      on_finish: function() {
+        jsPsych.data.displayData();
+      }
+    });
+
+
+
+const info_brochure = {
+    type: jsPsychHtmlButtonResponse,
+    css_classes: ['set-margins', 'center-text'],
+    stimulus: `
+
+<div id="title" class="center-text">
+    <h2>Information Brochure</h2>
+    </div>
+
+    <div id="consent" class="set-margins">
+
+  <p>
+   Thank you very much for your interest in our research. Before you decide whether you would like to participate or not, it is important for you to understand why the research is being done and what it will involve. Please take time to read the following information carefully and discuss it with others if you wish. Get in touch with us via email if there is anything that is not clear or if you would like more information. The contact details are: a.schembri@bham.ac.uk
+ </p>
+
+<p>
+<b> Purpose of the experiment </b>
+The purpose of this study is to investigate how hearing people with no previous sign language exposure learn British Sign Language (BSL). This will provide a resource for researchers to learn more about the grammar of BSL. Information about BSL grammar is important for BSL teachers, for BSL students, and for training BSL/English interpreters. In this study, we are interested in exploring how transparent structures from BSL are for people who do not know any sign language.
+</p>
+
+<p>
+<b>Instructions and procedure </b>
+In this study you will be shown 18 scenes paired with a video of a signer describing the scene. You will be asked to pick the matching scene that the signer described. You will also be asked to record your own video description of these scenes. 
+</p>
+
+<p>
+<b>Confidential treatment of your details </b>
+Your responses will be coded with an identifying number and not directly linked to your personal information. 
+</p>
+
+<p>
+<b>Risks and voluntary participation</b>
+There are no risks associated with your participation in this study.  You do not have to take part in this study if you do not want to. If you decide to take part, you may withdraw at any time without having to give a reason and without penalty. An ethics committee reviews all proposals for research using human subjects before they can proceed. The University of Birmingham Ethics Committee has approved this proposal.
+</p>
+
+<p>
+<b> Reimbursement</b>
+As you will gain no other benefit from your participation in this study, you will receive compensation for your time at the standard Prolific rate.
+</p>
+
+<p>
+<b>Further information</b>
+ Following your participation in the study, you may contact the researcher (Prof. Adam Schembri, a.schembri@bham.ac.uk) if you desire more information. 
+</p>
+
+<p>
+If you agree to participate in this study, please complete the participant consent form. If you do not agree to participate in this study, please exit the experiment now.
+  </p>
+  </div>`,
+choices: ["Proceed to consent form"]
+};
+
+var check_consent = function(elem) {
+    if (document.getElementById('consent_checkbox').checked) {
+        return true;
+    }
+    else {
+        alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
+        return false;
+    }
+    return false;
+};
+
+var consent = {
+    type: jsPsychExternalHtml,
+    css_classes: ['set-margins'],
+    url: "consent_page.html",
+    cont_btn: "custom-next-button",  // this needs to match the 'id' in the button of consent_page.html
+    check_fn: check_consent,
+
+};
+
+const consent2 = {
+    type: jsPsychExternalHtml,
+    url: 'consent2.html', // Path to your consent HTML file
+    cont_btn: 'continue-button', // Button to continue
+    check_fn: () => {
+        // Custom validation before proceeding
+        const allChecked = Array.from(document.querySelectorAll('.consent-checkbox')).every(cb => cb.checked);
+        if (!allChecked) {
+            alert("Please tick all the boxes to proceed.");
+            return false; // Prevents moving forward
+        }
+        return true; // Allows moving forward
+    }
+};
+
+
+
+
+    const init_camera = {
+        type: jsPsychInitializeCamera,
+    };
+
+    const how_video_should_be_example = {
+        type: jsPsychInstructions,
+        pages: [
+        'Example video/image? of gesturing'
+        ],
+        show_clickable_nav: true
+    };
+
+    const mirror_camera = {
+        type: jsPsychMirrorCamera,
+    };
+
+    const camera_practice = {
+      type: jsPsychMirrorCamera,
+      prompt: function(){
+                    const html = `
+                        Make sure that your chest, head and arms are visible in the video.
+                        <p style="text-align: center">
+                        Click 'Continue' when you are ready.
+                        </p>`;
+                    return html;
+                },
+    }
+
+
+    /* Sampling function to get N items without replacement from GLOBAL_STIMULI */
+    function sampleStimuli(array, n) {
+      let arrayCopy = [...array]; // Copy the array to avoid modifying the original
+      const sample = [];
+      
+      for (let i = 0; i < n; i++) {
+        const randomIndex = Math.floor(Math.random() * arrayCopy.length);
+        sample.push(arrayCopy[randomIndex]);
+        arrayCopy.splice(randomIndex, 1); // Remove selected item to ensure no replacement
+      }
+      
+      return sample;
+    }
+
+    // Function to generate choices dynamically
+    function getChoices() {
+      var stimImg = jsPsych.evaluateTimelineVariable("stimImg"); // get the choices for the current trial
+
+      const trialImages = globalImgs
+        .filter(img => img !== stimImg) // exclude the target image
+        .sort(() => Math.random() - 0.5)                       // shuffle the remaining items
+        .slice(0, 3);                                          // take the first 3 items
+
+      trialImages.push(stimImg);
+      console.log(trialImages)
+
+      var shuffledArray = jsPsych.randomization.repeat(trialImages, 1);  // shuffle
+      console.log(shuffledArray)
+
+      var choicesArray = [];
+
+      // Loop to create the HTML image buttons
+      for (var i = 0; i < shuffledArray.length; i++) {
+        choicesArray.push('<img src="' + shuffledArray[i] + '" style="width:100px;height:auto;">');
+      }
+      
+      console.log(choicesArray)
+      return choicesArray;  // return shuffled order of images
+    }
+
+
+const globalStimuli = [
+        { stimImg: 'animal_stims/bird-bounce.png', stimVideo: 'practice_videos/dolphin.mp4'},
+        { stimImg: 'animal_stims/bird-loop.png', stimVideo: 'practice_videos/eel.mp4' },
+        { stimImg: 'animal_stims/bird-straight.png', stimVideo: 'practice_videos/purple-fish.mp4' },
+        { stimImg: 'animal_stims/croc-bounce.png', stimVideo: 'practice_videos/stingray.mp4' },
+        { stimImg: 'animal_stims/croc-loop.png', stimVideo: 'practice_videos/jellyfish.mp4' },
+        { stimImg: 'animal_stims/croc-straight.png', stimVideo: 'practice_videos/more-jellyfish.mp4' },
+        { stimImg: 'animal_stims/dog-bounce.png', stimVideo: 'practice_videos/even-more-jellyfish.mp4' },
+        { stimImg: 'animal_stims/dog-loop.png', stimVideo: 'practice_videos/seal.mp4' },
+        { stimImg: 'animal_stims/dog-straight.png', stimVideo: 'practice_videos/octopus.mp4' },
+        { stimImg: 'animal_stims/eagle-bounce.png', stimVideo: 'practice_videos/another-octopus.mp4' },
+        { stimImg: 'animal_stims/eagle-loop.png', stimVideo: 'practice_videos/penguin.mp4' },
+        { stimImg: 'animal_stims/eagle-straight.png', stimVideo: 'practice_videos/water-seal.mp4' },
+        { stimImg: 'animal_stims/giraffe-bounce.png', stimVideo: 'practice_videos/many-seals.mp4' },
+        { stimImg: 'animal_stims/giraffe-loop.png', stimVideo: 'practice_videos/whale.mp4' },
+        { stimImg: 'animal_stims/giraffe-straight.png', stimVideo: 'practice_videos/whales.mp4' },
+        { stimImg: 'animal_stims/zebra-bounce.png', stimVideo: 'practice_videos/group-whales.mp4' },
+        { stimImg: 'animal_stims/zebra-loop.png', stimVideo: 'practice_videos/starfish.mp4' },
+        { stimImg: 'animal_stims/zebra-straight.png', stimVideo: 'practice_videos/coral.mp4' }
+    ];
+
+const globalImgs = globalStimuli.map(item => item.stimImg);
+
+const training = {
+    timeline: [
+        // observation (image)
+        {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: function(){
+                const html = `
+                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">`;
+                return html;
+            },
+            choices: ['Click here when you are ready to watch a description of this scene'],
+            prompt: " "
+        },
+
+
+        // observation (image + video)
+        {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: function(){
+                const html = `
+                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">
+
+                <p style="text-align: center">
+                <video width="300px" autoplay loop muted preload="auto">
+                    <source src="${jsPsych.evaluateTimelineVariable('stimVideo')}" type="video/mp4">
+                </video>
+                </p>`;
+
+                return html;
+            },
+            choices: "NO_KEYS",
+            trial_duration: 2000
+        },
+        // comprehension (image + video)
+        {
+          type: jsPsychHtmlButtonResponse,
+          stimulus: function() {
+            const html = `
+            <p style="text-align: center">
+              <video width="300px" autoplay loop muted preload="auto">
+                <source src="${jsPsych.evaluateTimelineVariable('stimVideo')}" type="video/mp4">
+              </video>
+            </p>`;
+            return html;
+          },
+          
+          // Dynamically set choices
+          choices: getChoices,
+          prompt: "Click on the scene that is described in this video",
+          save_trial_parameters: {  // determine what parameter data gets saved
+            stimulus: true,
+            choices: true,
+            prompt: false
+          },
+          // Capture the correct/incorrect feedback
+          on_finish: function(data) {
+            const stimImg = jsPsych.evaluateTimelineVariable("stimImg");  // target image
+            console.log(stimImg)
+
+            const selectedImgHtml = data.choices[data.response];  // participant's selected image
+            const selectedImg = selectedImgHtml.match(/src="([^"]*)"/)[1]; // extract image filename from the html
+
+            console.log(selectedImg)
+
+
+            // Determine accuracy
+            data.accuracy = (selectedImg === stimImg) ? 'correct' : 'incorrect';
+          }
+        },
+        {
+          type: jsPsychHtmlKeyboardResponse,
+          stimulus: function() {
+            const html = `
+              <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">
+              <p style="text-align: center">
+                <video width="300px" autoplay loop muted preload="auto">
+                  <source src="${jsPsych.evaluateTimelineVariable('stimVideo')}" type="video/mp4">
+                </video>
+              </p>`;
+            return html;
+          },
+          choices: "NO_KEYS",
+          prompt: function() {
+            const lastTrial = jsPsych.data.get().last(1).values()[0];
+            const feedback = lastTrial.accuracy === 'correct' ? '<b> That is correct! </b> The description refers to this scene.' : '<b> That is incorrect! </b> The description refers to this scene.';
+            return `<p style="text-align: center">${feedback}</p>`;
+          },
+          trial_duration: 3000
+        }
+        
+    ],
+    timeline_variables: globalStimuli, // Use globalStimuli as timeline variables
+    sample: {
+        type: 'without-replacement',
+        size: 9 // Set to the number of trials you want to sample
+    }
+}
+
+const test = {
+    timeline: [
+        {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: function(){
+                const html = `
+                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">`;
+                return html;
+            },
+            choices: ['Click here when you are ready to record a description of this scene'],
+            prompt: " "
+        },
+        {
+  type: jsPsychMirrorCamera,
+  prompt: function(){
+                const html = `
+                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">
+                    <p style="text-align: center">
+                    Click 'Continue' when you are finished recording your video description of this scene
+                    </p>`;
+                return html;
+            },
+  extensions: [{type: jsPsychExtensionRecordVideo}]
+        }
+    ],
+    timeline_variables: globalStimuli,
+        sample: {
+        type: 'without-replacement',
+        size: 18
+    }
+};
+
+
+const outro = {
+    type: jsPsychHtmlButtonResponse,
+    css_classes: ['set-margins', 'center-text'],
+    stimulus: `
+
+<div id="title" class="center-text">
+    <h2>Thank you!</h2>
+    </div>
+
+    <div id="consent" class="set-margins">
+
+  <p>
+  Thank you for taking part in this experiment. If you have any questions please get in touch with us via email at a.schembri@bham.ac.uk
+  </p>
+
+  <p>
+You will now be redirected to Prolific.
+  </p>
+
+ </div>`
+,
+choices: ["Complete study"]
+};
+
+
+const timeline = [info_brochure, consent2, init_camera, how_video_should_be_example, camera_practice, training, test, outro]
+
+
+    /* start the experiment!! */
+    jsPsych.run(timeline);
+
+  </script>
+</html>
