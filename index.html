@@ -13,6 +13,8 @@
     <script src="jspsych/extension-record-video.js"></script>
     <script src="jspsych/plugin-external-html.js"></script>
     <script src="jspsych/plugin-survey-multi-choice.js"></script>
+    <script src="jspsych/plugin-preload.js"></script>
+
 
   <style> 
 .set-margins {
@@ -51,7 +53,6 @@
 .jspsych-external-html-button:hover {
     background-color: #0056b3;
 }
-
   </style>
 
   </head>
@@ -96,7 +97,7 @@ In this study you will be shown 18 scenes paired with a video of a signer descri
 
 <p>
 <b>Confidential treatment of your details </b>
-Your responses will be coded with an identifying number and not directly linked to your personal information. 
+Your responses will be coded with an identifying number and not directly linked to your personal information.  Your recording and your data will not be associated with your name or with any other personal details that might identify you, although people who know might recognize you.
 </p>
 
 <p>
@@ -132,18 +133,9 @@ var check_consent = function(elem) {
     return false;
 };
 
-var consent = {
+const consent = {
     type: jsPsychExternalHtml,
-    css_classes: ['set-margins'],
-    url: "consent_page.html",
-    cont_btn: "custom-next-button",  // this needs to match the 'id' in the button of consent_page.html
-    check_fn: check_consent,
-
-};
-
-const consent2 = {
-    type: jsPsychExternalHtml,
-    url: 'consent2.html', // Path to your consent HTML file
+    url: 'consent.html', // Path to your consent HTML file
     cont_btn: 'continue-button', // Button to continue
     check_fn: () => {
         // Custom validation before proceeding
@@ -156,20 +148,44 @@ const consent2 = {
     }
 };
 
+var full_screen = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: function(){
+                const html = `
+                <p style="text-align: center">
+                Please ensure that your browser window is in full screen mode for the duration of the experiment.
+                
+               `;
 
-
+                return html;
+            },
+  choices: ['Continue'],
+};
 
     const init_camera = {
         type: jsPsychInitializeCamera,
     };
 
-    const how_video_should_be_example = {
-        type: jsPsychInstructions,
-        pages: [
-        'Example video/image? of gesturing'
-        ],
-        show_clickable_nav: true
-    };
+
+var how_video_should_be_example = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: function(){
+                const html = `
+                <p style="text-align: center">
+                <video width="500px" autoplay loop muted preload="auto">
+                    <source src="example-video.mp4" type="video/mp4">
+                </video>
+                </p>
+
+                Here is an example of the gesture space that should be included in your video responses. Make sure that your chest, head and arms are visible in the video. (I will record a better video. The lighting in my house is very bad)
+
+                
+               `;
+
+                return html;
+            },
+  choices: ['Continue'],
+};
 
     const mirror_camera = {
         type: jsPsychMirrorCamera,
@@ -177,12 +193,11 @@ const consent2 = {
 
     const camera_practice = {
       type: jsPsychMirrorCamera,
+      width: 500,
       prompt: function(){
                     const html = `
                         Make sure that your chest, head and arms are visible in the video.
-                        <p style="text-align: center">
-                        Click 'Continue' when you are ready.
-                        </p>`;
+                        `;
                     return html;
                 },
     }
@@ -212,10 +227,8 @@ const consent2 = {
         .slice(0, 3);                                          // take the first 3 items
 
       trialImages.push(stimImg);
-      console.log(trialImages)
 
       var shuffledArray = jsPsych.randomization.repeat(trialImages, 1);  // shuffle
-      console.log(shuffledArray)
 
       var choicesArray = [];
 
@@ -224,42 +237,80 @@ const consent2 = {
         choicesArray.push('<img src="' + shuffledArray[i] + '" style="width:100px;height:auto;">');
       }
       
-      console.log(choicesArray)
       return choicesArray;  // return shuffled order of images
     }
 
 
+
 const globalStimuli = [
-        { stimImg: 'animal_stims/bird-bounce.png', stimVideo: 'practice_videos/dolphin.mp4'},
-        { stimImg: 'animal_stims/bird-loop.png', stimVideo: 'practice_videos/eel.mp4' },
-        { stimImg: 'animal_stims/bird-straight.png', stimVideo: 'practice_videos/purple-fish.mp4' },
-        { stimImg: 'animal_stims/croc-bounce.png', stimVideo: 'practice_videos/stingray.mp4' },
-        { stimImg: 'animal_stims/croc-loop.png', stimVideo: 'practice_videos/jellyfish.mp4' },
-        { stimImg: 'animal_stims/croc-straight.png', stimVideo: 'practice_videos/more-jellyfish.mp4' },
-        { stimImg: 'animal_stims/dog-bounce.png', stimVideo: 'practice_videos/even-more-jellyfish.mp4' },
-        { stimImg: 'animal_stims/dog-loop.png', stimVideo: 'practice_videos/seal.mp4' },
-        { stimImg: 'animal_stims/dog-straight.png', stimVideo: 'practice_videos/octopus.mp4' },
-        { stimImg: 'animal_stims/eagle-bounce.png', stimVideo: 'practice_videos/another-octopus.mp4' },
-        { stimImg: 'animal_stims/eagle-loop.png', stimVideo: 'practice_videos/penguin.mp4' },
-        { stimImg: 'animal_stims/eagle-straight.png', stimVideo: 'practice_videos/water-seal.mp4' },
-        { stimImg: 'animal_stims/giraffe-bounce.png', stimVideo: 'practice_videos/many-seals.mp4' },
-        { stimImg: 'animal_stims/giraffe-loop.png', stimVideo: 'practice_videos/whale.mp4' },
-        { stimImg: 'animal_stims/giraffe-straight.png', stimVideo: 'practice_videos/whales.mp4' },
-        { stimImg: 'animal_stims/zebra-bounce.png', stimVideo: 'practice_videos/group-whales.mp4' },
-        { stimImg: 'animal_stims/zebra-loop.png', stimVideo: 'practice_videos/starfish.mp4' },
-        { stimImg: 'animal_stims/zebra-straight.png', stimVideo: 'practice_videos/coral.mp4' }
+        { stimImg: 'animal_stims_updated/bird-bounce.png', stimVideo: 'bsl_videos/BirdBounce.mp4', videoDuration: 0},
+        { stimImg: 'animal_stims_updated/bird-dia.png', stimVideo: 'bsl_videos/BirdDia.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/bird-hori.png', stimVideo: 'bsl_videos/BirdHori.mp4', videoDuration: 0 },
+
+        { stimImg: 'animal_stims_updated/cow-bounce.png', stimVideo: 'bsl_videos/CowBounce.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/cow-dia.png', stimVideo: 'bsl_videos/CowDia.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/cow-hori.png', stimVideo: 'bsl_videos/CowHori.mp4', videoDuration: 0 },
+
+        { stimImg: 'animal_stims_updated/croc-bounce.png', stimVideo: 'bsl_videos/CrocBounce.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/croc-dia.png', stimVideo: 'bsl_videos/CrocDia.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/croc-hori.png', stimVideo: 'bsl_videos/CrocHori.mp4', videoDuration: 0 },
+
+        { stimImg: 'animal_stims_updated/dog-bounce.png', stimVideo: 'bsl_videos/DogBounce.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/dog-dia.png', stimVideo: 'bsl_videos/DogDia.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/dog-hori.png', stimVideo: 'bsl_videos/DogHori.mp4', videoDuration: 0 },
+
+        { stimImg: 'animal_stims_updated/fish-bounce.png', stimVideo: 'bsl_videos/FishBounce.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/fish-dia.png', stimVideo: 'bsl_videos/FishDia.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/fish-hori.png', stimVideo: 'bsl_videos/FishHori.mp4', videoDuration: 0 },
+
+        { stimImg: 'animal_stims_updated/giraffe-bounce.png', stimVideo: 'bsl_videos/GiraffeBounce.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/giraffe-dia.png', stimVideo: 'bsl_videos/GiraffeDia.mp4', videoDuration: 0 },
+        { stimImg: 'animal_stims_updated/giraffe-hori.png', stimVideo: 'bsl_videos/GiraffeHori.mp4', videoDuration: 0 }
     ];
 
+// Preload all images and videos
 const globalImgs = globalStimuli.map(item => item.stimImg);
+const globalVideos = globalStimuli.map(item => item.stimVideo);
 
-const training = {
+const preload = {
+    type: jsPsychPreload,
+    images: globalImgs, // Preload images
+    videos: globalVideos, // Preload videos
+    error_message: "Some media files failed to load. Please check your internet connection or try refreshing the page."
+
+};
+
+
+// Helper function to get video duration
+function getVideoDuration(videoUrl) {
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.src = videoUrl;
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+            resolve(video.duration);
+        };
+    });
+}
+
+// Preload video durations and attach to stimuli
+async function preloadDurations(stimuli) {
+    for (const stim of stimuli) {
+        const duration = await getVideoDuration(stim.stimVideo);
+        stim.videoDuration = duration; // Add duration to each stimulus
+    }
+    return stimuli;
+}
+
+preloadDurations(globalStimuli).then(() => { 
+    const training = {
     timeline: [
         // observation (image)
         {
             type: jsPsychHtmlButtonResponse,
             stimulus: function(){
                 const html = `
-                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">`;
+                <img src="${jsPsych.evaluateTimelineVariable('stimImg')}" style="width:200px; height:auto;">`;
                 return html;
             },
             choices: ['Click here when you are ready to watch a description of this scene'],
@@ -267,31 +318,36 @@ const training = {
         },
 
 
-        // observation (image + video)
+        // observation (image + video) ->, switch order!
         {
             type: jsPsychHtmlKeyboardResponse,
             stimulus: function(){
                 const html = `
-                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">
-
                 <p style="text-align: center">
-                <video width="300px" autoplay loop muted preload="auto">
+                <video width="500px" autoplay loop muted preload="auto">
                     <source src="${jsPsych.evaluateTimelineVariable('stimVideo')}" type="video/mp4">
                 </video>
-                </p>`;
+                </p>
+
+                <img src="${jsPsych.evaluateTimelineVariable('stimImg')}" style="width:200px; height:auto;">
+               `;
 
                 return html;
             },
             choices: "NO_KEYS",
-            trial_duration: 2000
+            trial_duration: function () {
+            // Use preloaded duration from timeline variable
+            return jsPsych.evaluateTimelineVariable('videoDuration') * 2 * 1000; // 2x duration in milliseconds
+            }
         },
+
         // comprehension (image + video)
         {
           type: jsPsychHtmlButtonResponse,
           stimulus: function() {
             const html = `
             <p style="text-align: center">
-              <video width="300px" autoplay loop muted preload="auto">
+              <video width="500px" autoplay loop muted preload="auto">
                 <source src="${jsPsych.evaluateTimelineVariable('stimVideo')}" type="video/mp4">
               </video>
             </p>`;
@@ -309,28 +365,27 @@ const training = {
           // Capture the correct/incorrect feedback
           on_finish: function(data) {
             const stimImg = jsPsych.evaluateTimelineVariable("stimImg");  // target image
-            console.log(stimImg)
 
             const selectedImgHtml = data.choices[data.response];  // participant's selected image
             const selectedImg = selectedImgHtml.match(/src="([^"]*)"/)[1]; // extract image filename from the html
-
-            console.log(selectedImg)
-
 
             // Determine accuracy
             data.accuracy = (selectedImg === stimImg) ? 'correct' : 'incorrect';
           }
         },
+         // Feedback
         {
           type: jsPsychHtmlKeyboardResponse,
           stimulus: function() {
             const html = `
-              <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">
-              <p style="text-align: center">
-                <video width="300px" autoplay loop muted preload="auto">
+            <p style="text-align: center">
+                <video width="500px" autoplay loop muted preload="auto">
                   <source src="${jsPsych.evaluateTimelineVariable('stimVideo')}" type="video/mp4">
                 </video>
-              </p>`;
+              </p>
+              
+             <img src="${jsPsych.evaluateTimelineVariable('stimImg')}" style="width:200px; height:auto;">`
+             ;
             return html;
           },
           choices: "NO_KEYS",
@@ -350,13 +405,15 @@ const training = {
     }
 }
 
+
 const test = {
     timeline: [
         {
             type: jsPsychHtmlButtonResponse,
             stimulus: function(){
                 const html = `
-                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">`;
+                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}" style="width:200px; height:auto;">`;
+
                 return html;
             },
             choices: ['Click here when you are ready to record a description of this scene'],
@@ -364,9 +421,10 @@ const test = {
         },
         {
   type: jsPsychMirrorCamera,
+  width: 500,
   prompt: function(){
                 const html = `
-                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}">
+                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}" style="width:200px; height:auto;">
                     <p style="text-align: center">
                     Click 'Continue' when you are finished recording your video description of this scene
                     </p>`;
@@ -408,11 +466,13 @@ choices: ["Complete study"]
 };
 
 
-const timeline = [info_brochure, consent2, init_camera, how_video_should_be_example, camera_practice, training, test, outro]
+const timeline = [info_brochure, consent, full_screen, init_camera, how_video_should_be_example, camera_practice, preload, training, test, outro]
 
 
     /* start the experiment!! */
     jsPsych.run(timeline);
+
+    });
 
   </script>
 </html>
