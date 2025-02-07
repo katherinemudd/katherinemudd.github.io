@@ -14,6 +14,11 @@
     <script src="jspsych/plugin-external-html.js"></script>
     <script src="jspsych/plugin-survey-multi-choice.js"></script>
     <script src="jspsych/plugin-preload.js"></script>
+    
+    <script src="jspsych/plugin-survey-likert.js"></script>
+    <script src="jspsych/plugin-survey-text.js"></script>
+    <script src="jspsych/plugin-survey.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@1.0.1/css/survey.css">
 
 
   <style> 
@@ -50,6 +55,13 @@
     text-decoration: none;
 }
 
+.center-submit .jspsych-btn {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
 .jspsych-external-html-button:hover {
     background-color: #0056b3;
 }
@@ -63,64 +75,38 @@
     /* initialize jsPsych */
     var jsPsych = initJsPsych({
         show_progress_bar: true,
+        extensions: [{ type: jsPsychExtensionRecordVideo }],
       on_finish: function() {
         jsPsych.data.displayData();
       }
     });
 
 
+// capture info from Prolific
+var subject_id = jsPsych.data.getURLVariable('PROLIFIC_PID');
+var study_id = jsPsych.data.getURLVariable('STUDY_ID');
+var session_id = jsPsych.data.getURLVariable('SESSION_ID');
+
+const participant_id = jsPsych.randomization.randomID(10); // Generate a random ID len 10
+const condition = jsPsych.randomization.sampleWithoutReplacement(['bsl', 'counter-iconic'], 1)[0]; // Randomly assign condition
+console.log(condition);
+
+jsPsych.data.addProperties({
+    subject_id: subject_id,  // Prolific
+    study_id: study_id,  // Prolific
+    session_id: session_id  // Prolific
+
+    //participant_id: participant_id,  // generated in jspsych
+    //condition: condition
+});
+
 
 const info_brochure = {
-    type: jsPsychHtmlButtonResponse,
-    css_classes: ['set-margins', 'center-text'],
-    stimulus: `
-
-<div id="title" class="center-text">
-    <h2>Information Brochure</h2>
-    </div>
-
-    <div id="consent" class="set-margins">
-
-  <p>
-   Thank you very much for your interest in our research. Before you decide whether you would like to participate or not, it is important for you to understand why the research is being done and what it will involve. Please take time to read the following information carefully and discuss it with others if you wish. Get in touch with us via email if there is anything that is not clear or if you would like more information. The contact details are: a.schembri@bham.ac.uk
- </p>
-
-<p>
-<b> Purpose of the experiment </b>
-The purpose of this study is to investigate how hearing people with no previous sign language exposure learn British Sign Language (BSL). This will provide a resource for researchers to learn more about the grammar of BSL. Information about BSL grammar is important for BSL teachers, for BSL students, and for training BSL/English interpreters. In this study, we are interested in exploring how transparent structures from BSL are for people who do not know any sign language.
-</p>
-
-<p>
-<b>Instructions and procedure </b>
-In this study you will be shown 18 scenes paired with a video of a signer describing the scene. You will be asked to pick the matching scene that the signer described. You will also be asked to record your own video description of these scenes. 
-</p>
-
-<p>
-<b>Confidential treatment of your details </b>
-Your responses will be coded with an identifying number and not directly linked to your personal information.  Your recording and your data will not be associated with your name or with any other personal details that might identify you, although people who know might recognize you.
-</p>
-
-<p>
-<b>Risks and voluntary participation</b>
-There are no risks associated with your participation in this study.  You do not have to take part in this study if you do not want to. If you decide to take part, you may withdraw at any time without having to give a reason and without penalty. An ethics committee reviews all proposals for research using human subjects before they can proceed. The University of Birmingham Ethics Committee has approved this proposal.
-</p>
-
-<p>
-<b> Reimbursement</b>
-As you will gain no other benefit from your participation in this study, you will receive compensation for your time at the standard Prolific rate.
-</p>
-
-<p>
-<b>Further information</b>
- Following your participation in the study, you may contact the researcher (Prof. Adam Schembri, a.schembri@bham.ac.uk) if you desire more information. 
-</p>
-
-<p>
-If you agree to participate in this study, please complete the participant consent form. If you do not agree to participate in this study, please exit the experiment now.
-  </p>
-  </div>`,
-choices: ["Proceed to consent form"]
+    type: jsPsychExternalHtml,
+    url: 'info_brochure.html', // Path to consent HTML file
+    cont_btn: 'continue-button', // Button to continue
 };
+
 
 var check_consent = function(elem) {
     if (document.getElementById('consent_checkbox').checked) {
@@ -154,68 +140,93 @@ var full_screen = {
                 const html = `
                 <p style="text-align: center">
                 Please ensure that your browser window is in full screen mode for the duration of the experiment.
-                
                `;
-
                 return html;
             },
   choices: ['Continue'],
 };
 
-    const init_camera = {
+
+const init_camera = {
         type: jsPsychInitializeCamera,
     };
 
 
 var how_video_should_be_example = {
+    type: jsPsychHtmlButtonResponse,
+stimulus: function() {
+    return `
+        <p style="text-align: center">
+            <video id="video-player" width="500px" autoplay loop muted preload="auto"
+                   oncontextmenu="return false;" disablePictureInPicture controlsList="nodownload nofullscreen noplaybackrate">
+                <source src="example-video.mp4" type="video/mp4">
+            </video>
+        </p>
+        <p style="text-align: center"> Here is an example of the gesture space that should be included in your video responses. </p>
+        <p style="text-align: center"> Please make sure that your chest, head and arms are visible in the video. </p>
+        </p>
+    `
+        ;
+},
+choices: ['Continue'], // Response buttons
+response_ends_trial: true, // Prevents skipping via button click
+on_load: function() {
+    const video = document.getElementById("video-player");
+    const buttons = document.querySelectorAll(".jspsych-btn");
+
+    // Disable buttons initially
+    buttons.forEach(btn => btn.disabled = true);
+
+    // Track first full playthrough
+    let hasPlayedOnce = false;
+
+    video.addEventListener("timeupdate", function() {
+        if (!hasPlayedOnce && video.currentTime >= video.duration - 0.1) { 
+            hasPlayedOnce = true; // Mark first full playthrough complete
+            buttons.forEach(btn => btn.disabled = false);
+        }
+    });
+}
+}
+
+const mirror_camera = {
+    type: jsPsychMirrorCamera,
+};
+
+const camera_practice = {
+    type: jsPsychMirrorCamera,
+    width: 500,
+    prompt: function(){
+        const html = `
+        Make sure that your chest, head and arms are visible in the video.
+                        `;
+        return html;
+                },
+    }
+
+
+var begin_experiment = {
   type: jsPsychHtmlButtonResponse,
   stimulus: function(){
                 const html = `
                 <p style="text-align: center">
-                <video width="500px" autoplay loop muted preload="auto">
-                    <source src="example-video.mp4" type="video/mp4">
-                </video>
-                </p>
+                <strong>
+                You will now begin the experiment.
+                </strong>
 
-                Here is an example of the gesture space that should be included in your video responses. Make sure that your chest, head and arms are visible in the video. (I will record a better video. The lighting in my house is very bad)
+                <p style="text-align: center">
+                Please note that you have three minutes to respond to each slide. If you do not respond within three minutes, the experiment will end.
 
-                
+                <p style="text-align: center">
+                Good luck!  
                `;
-
                 return html;
             },
   choices: ['Continue'],
 };
 
-    const mirror_camera = {
-        type: jsPsychMirrorCamera,
-    };
-
-    const camera_practice = {
-      type: jsPsychMirrorCamera,
-      width: 500,
-      prompt: function(){
-                    const html = `
-                        Make sure that your chest, head and arms are visible in the video.
-                        `;
-                    return html;
-                },
-    }
 
 
-    /* Sampling function to get N items without replacement from GLOBAL_STIMULI */
-    function sampleStimuli(array, n) {
-      let arrayCopy = [...array]; // Copy the array to avoid modifying the original
-      const sample = [];
-      
-      for (let i = 0; i < n; i++) {
-        const randomIndex = Math.floor(Math.random() * arrayCopy.length);
-        sample.push(arrayCopy[randomIndex]);
-        arrayCopy.splice(randomIndex, 1); // Remove selected item to ensure no replacement
-      }
-      
-      return sample;
-    }
 
     // Function to generate choices dynamically
     function getChoices() {
@@ -241,43 +252,87 @@ var how_video_should_be_example = {
     }
 
 
+const catsGlobalStimuli = [
+        { stimImg: 'animal_stims_updated/bird-bounce.png', stimVideo: 'bsl_videos/BirdBounce.mp4', videoDuration: 0, animal: 'bird', movement: 'bounce'},
+        { stimImg: 'animal_stims_updated/bird-dia.png', stimVideo: 'bsl_videos/BirdDia.mp4', videoDuration: 0, animal: 'bird', movement: 'diagonal' },
+        { stimImg: 'animal_stims_updated/bird-hori.png', stimVideo: 'bsl_videos/BirdHori.mp4', videoDuration: 0, animal: 'bird', movement: 'horizontal' },
+        { stimImg: 'animal_stims_updated/cow-bounce.png', stimVideo: 'bsl_videos/CowBounce.mp4', videoDuration: 0, animal: 'cow', movement: 'bounce' },
+        { stimImg: 'animal_stims_updated/cow-dia.png', stimVideo: 'bsl_videos/CowDia.mp4', videoDuration: 0, animal: 'cow', movement: 'diagonal' },
+        { stimImg: 'animal_stims_updated/cow-hori.png', stimVideo: 'bsl_videos/CowHori.mp4', videoDuration: 0, animal: 'cow', movement: 'horizontal' },
+        { stimImg: 'animal_stims_updated/croc-bounce.png', stimVideo: 'bsl_videos/CrocBounce.mp4', videoDuration: 0, animal: 'crocodile', movement: 'bounce' },
+        { stimImg: 'animal_stims_updated/croc-dia.png', stimVideo: 'bsl_videos/CrocDia.mp4', videoDuration: 0, animal: 'crocodile', movement: 'diagonal' },
+        { stimImg: 'animal_stims_updated/croc-hori.png', stimVideo: 'bsl_videos/CrocHori.mp4', videoDuration: 0, animal: 'crocodile', movement: 'horizontal' },
+        { stimImg: 'animal_stims_updated/dog-bounce.png', stimVideo: 'bsl_videos/DogBounce.mp4', videoDuration: 0, animal: 'dog', movement: 'bounce' },
+        { stimImg: 'animal_stims_updated/dog-dia.png', stimVideo: 'bsl_videos/DogDia.mp4', videoDuration: 0, animal: 'dog', movement: 'diagonal' },
+        { stimImg: 'animal_stims_updated/dog-hori.png', stimVideo: 'bsl_videos/DogHori.mp4', videoDuration: 0, animal: 'dog', movement: 'horizontal' },
+        { stimImg: 'animal_stims_updated/fish-bounce.png', stimVideo: 'bsl_videos/FishBounce.mp4', videoDuration: 0, animal: 'fish', movement: 'bounce' },
+        { stimImg: 'animal_stims_updated/fish-dia.png', stimVideo: 'bsl_videos/FishDia.mp4', videoDuration: 0, animal: 'fish', movement: 'diagonal' },
+        { stimImg: 'animal_stims_updated/fish-hori.png', stimVideo: 'bsl_videos/FishHori.mp4', videoDuration: 0, animal: 'fish', movement: 'horizontal' },
+        { stimImg: 'animal_stims_updated/giraffe-bounce.png', stimVideo: 'bsl_videos/GiraffeBounce.mp4', videoDuration: 0, animal: 'giraffe', movement: 'bounce' },
+        { stimImg: 'animal_stims_updated/giraffe-dia.png', stimVideo: 'bsl_videos/GiraffeDia.mp4', videoDuration: 0, animal: 'giraffe', movement: 'diagonal' },
+        { stimImg: 'animal_stims_updated/giraffe-hori.png', stimVideo: 'bsl_videos/GiraffeHori.mp4', videoDuration: 0, animal: 'giraffe', movement: 'horizontal' }
+        ];
 
-const globalStimuli = [
-        { stimImg: 'animal_stims_updated/bird-bounce.png', stimVideo: 'bsl_videos/BirdBounce.mp4', videoDuration: 0},
-        { stimImg: 'animal_stims_updated/bird-dia.png', stimVideo: 'bsl_videos/BirdDia.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/bird-hori.png', stimVideo: 'bsl_videos/BirdHori.mp4', videoDuration: 0 },
 
-        { stimImg: 'animal_stims_updated/cow-bounce.png', stimVideo: 'bsl_videos/CowBounce.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/cow-dia.png', stimVideo: 'bsl_videos/CowDia.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/cow-hori.png', stimVideo: 'bsl_videos/CowHori.mp4', videoDuration: 0 },
+// lists of imgs and videos
+const globalImgs = catsGlobalStimuli.map(img => img.stimImg);
+const globalVideos = catsGlobalStimuli.map(vid => vid.stimVideo);
 
-        { stimImg: 'animal_stims_updated/croc-bounce.png', stimVideo: 'bsl_videos/CrocBounce.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/croc-dia.png', stimVideo: 'bsl_videos/CrocDia.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/croc-hori.png', stimVideo: 'bsl_videos/CrocHori.mp4', videoDuration: 0 },
 
-        { stimImg: 'animal_stims_updated/dog-bounce.png', stimVideo: 'bsl_videos/DogBounce.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/dog-dia.png', stimVideo: 'bsl_videos/DogDia.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/dog-hori.png', stimVideo: 'bsl_videos/DogHori.mp4', videoDuration: 0 },
+// create counter-iconic condition
+function randomizeStimuli(stimuli) {
+    // Step 1: Group stimuli by movement
+    const movements = ['bounce', 'diagonal', 'horizontal'];
+    const groupedStimuli = movements.map(movement =>
+        stimuli.filter(stim => stim.movement === movement)
+    );
 
-        { stimImg: 'animal_stims_updated/fish-bounce.png', stimVideo: 'bsl_videos/FishBounce.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/fish-dia.png', stimVideo: 'bsl_videos/FishDia.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/fish-hori.png', stimVideo: 'bsl_videos/FishHori.mp4', videoDuration: 0 },
+    // Step 2: Get unique animals and shuffle for random pairing
+    const animals = [...new Set(stimuli.map(stim => stim.animal))]; // Get unique animals
+    const shuffledAnimals = shuffleArray([...animals]); // Shuffle for random pairing
 
-        { stimImg: 'animal_stims_updated/giraffe-bounce.png', stimVideo: 'bsl_videos/GiraffeBounce.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/giraffe-dia.png', stimVideo: 'bsl_videos/GiraffeDia.mp4', videoDuration: 0 },
-        { stimImg: 'animal_stims_updated/giraffe-hori.png', stimVideo: 'bsl_videos/GiraffeHori.mp4', videoDuration: 0 }
-    ];
+    // Create a mapping between `stimImg` animals and `stimVideo` animals
+    const animalMapping = {};
+    animals.forEach((animal, index) => {
+        animalMapping[animal] = shuffledAnimals[index];
+    });
+
+    // Step 3: Create the new randomized list
+    const randomizedStimuli = [];
+    groupedStimuli.forEach(group => {
+        group.forEach(stim => {
+            randomizedStimuli.push({
+                stimImg: stim.stimImg, // Keep the origrandomizeStimuliinal stimImg
+                stimVideo: stimuli.find(
+                    s => s.animal === animalMapping[stim.animal] && s.movement === stim.movement
+                ).stimVideo, // Find corresponding randomized video
+                videoDuration: stim.videoDuration,
+                movement: stim.movement,
+                animal: stim.animal,
+                pairedanimal: animalMapping[stim.animal]
+            });
+        });
+    });
+    return randomizedStimuli;
+};
+
+// Helper: Shuffle Array
+function shuffleArray(array) {
+    return array
+        .map(value => ({ value, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ value }) => value);
+}
+
+// Select the appropriate stimuli
+let conditionStimuli = condition === 'bsl' ? catsGlobalStimuli : randomizeStimuli(catsGlobalStimuli);
 
 // Preload all images and videos
-const globalImgs = globalStimuli.map(item => item.stimImg);
-const globalVideos = globalStimuli.map(item => item.stimVideo);
-
 const preload = {
     type: jsPsychPreload,
     images: globalImgs, // Preload images
     videos: globalVideos, // Preload videos
     error_message: "Some media files failed to load. Please check your internet connection or try refreshing the page."
-
 };
 
 
@@ -302,11 +357,67 @@ async function preloadDurations(stimuli) {
     return stimuli;
 }
 
-preloadDurations(globalStimuli).then(() => { 
+
+// Ensure all animals are sampled for training + 3 additional ones (9 stimuli total)
+function getStimuliSubset(stimuliArray) { 
+    // Shuffle array and take the first `sampleSize` elements
+    console.log(stimuliArray);
+    let animalGroups = {};
+    stimuliArray.forEach(stim => {
+        if (!animalGroups[stim.animal]) {
+            animalGroups[stim.animal] = [];
+        }
+        animalGroups[stim.animal].push(stim);
+    });
+
+    // Select one random stimulus per animal
+    let selectedStimuli = Object.values(animalGroups).map(group =>
+        jsPsych.randomization.sampleWithoutReplacement(group, 1)[0]
+    );
+
+    // Get remaining stimuli after selection
+    let remainingStimuli = stimuliArray.filter(stim => !selectedStimuli.includes(stim));
+
+    // Randomly select three additional stimuli from remaining
+    let extraStimuli = jsPsych.randomization.sampleWithoutReplacement(remainingStimuli, 3);
+
+    // Combine the selected stimuli
+    animalensuredstims = selectedStimuli.concat(extraStimuli);
+    console.log(animalensuredstims)
+    return animalensuredstims
+}
+
+
+// example of a working timeout trial
+const timeoutTrial = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: "<p>Please watch the video and make a selection.</p>",
+    choices: ['Continue'],
+    on_load: function() {
+        // Start timeout and store reference
+        timeoutID = setTimeout(() => {
+            jsPsych.abortExperiment("The experiment has ended because you took too long to respond.");
+}, 3000);
+    },
+    on_finish: function() {
+        // Clear timeout if the participant responds in time
+        clearTimeout();
+    }
+};
+
+
+const timeoutms = 180000 // change to 180000 ms = 3 minutes
+const timeoutmessage = "The experiment has ended because you did not respond within three minutes. Thank you for your participation. Please contact the experimenter if you have any questions."
+
+let timeoutID ; // Global variable to store timeout reference
+
+let trialCounterTraining = 0;  // Counter for trial numbers
+
+preloadDurations(conditionStimuli).then(() => { 
     const training = {
     timeline: [
-        // observation (image)
-        {
+        // Observation (image)
+         {
             type: jsPsychHtmlButtonResponse,
             stimulus: function(){
                 const html = `
@@ -314,11 +425,22 @@ preloadDurations(globalStimuli).then(() => {
                 return html;
             },
             choices: ['Click here when you are ready to watch a description of this scene'],
-            prompt: " "
+            prompt: " ",
+            data: function() {
+                trialCounterTraining++; // Increment trial number
+                return { trialCounterTraining: trialCounterTraining }; // Save trial number
+            },
+            on_load: function() {
+                    timeoutID = setTimeout(() => {
+                        jsPsych.abortExperiment(timeoutmessage);
+                        }, timeoutms);
+            },
+            on_finish: function() {
+                clearTimeout(timeoutID);  // Clear timeout if participant responds in time
+            }
         },
 
-
-        // observation (image + video) ->, switch order!
+        // Observation (image + video)
         {
             type: jsPsychHtmlKeyboardResponse,
             stimulus: function(){
@@ -338,41 +460,73 @@ preloadDurations(globalStimuli).then(() => {
             trial_duration: function () {
             // Use preloaded duration from timeline variable
             return jsPsych.evaluateTimelineVariable('videoDuration') * 2 * 1000; // 2x duration in milliseconds
+            },
+            data: function() {
+            return { trialCounterTest: trialCounterTest, round: roundCounter }; // Ensure trial number is recorded
             }
         },
 
-        // comprehension (image + video)
+        // Comprehension (image array + video)
         {
           type: jsPsychHtmlButtonResponse,
           stimulus: function() {
-            const html = `
-            <p style="text-align: center">
-              <video width="500px" autoplay loop muted preload="auto">
+            return `<p style="text-align: center">
+            <video id="video-player" width="500px" autoplay loop muted preload="auto"
+                   oncontextmenu="return false;" disablePictureInPicture controlsList="nodownload nofullscreen noplaybackrate">
                 <source src="${jsPsych.evaluateTimelineVariable('stimVideo')}" type="video/mp4">
-              </video>
-            </p>`;
-            return html;
+            </video>
+        </p>`;
           },
-          
-          // Dynamically set choices
-          choices: getChoices,
-          prompt: "Click on the scene that is described in this video",
-          save_trial_parameters: {  // determine what parameter data gets saved
-            stimulus: true,
-            choices: true,
-            prompt: false
-          },
-          // Capture the correct/incorrect feedback
-          on_finish: function(data) {
-            const stimImg = jsPsych.evaluateTimelineVariable("stimImg");  // target image
+            choices: getChoices, // Dynamically set choices
+            prompt: "Click on the scene that is described in this video",
+            save_trial_parameters: {  
+                stimulus: true,
+                choices: true,
+                prompt: false
+            },
+            response_ends_trial: true, 
+            on_load: function() {
+                const videolengthms = jsPsych.evaluateTimelineVariable('videoDuration') * 1000;
+                const buttons = document.querySelectorAll(".jspsych-btn");
 
-            const selectedImgHtml = data.choices[data.response];  // participant's selected image
-            const selectedImg = selectedImgHtml.match(/src="([^"]*)"/)[1]; // extract image filename from the html
+                // Disable buttons initially
+                buttons.forEach(btn => btn.disabled = true);
 
-            // Determine accuracy
-            data.accuracy = (selectedImg === stimImg) ? 'correct' : 'incorrect';
-          }
-        },
+                // Enable buttons after video length
+                setTimeout(() => {
+                    buttons.forEach(btn => btn.disabled = false);
+                }, videolengthms); // Participant can click button after len of video in milliseconds
+
+                timeoutID = setTimeout(() => {
+                        jsPsych.abortExperiment(timeoutmessage);
+                        }, timeoutms);
+            },      
+            // Capture the correct/incorrect feedback
+            on_finish: function(data) {
+                clearTimeout(timeoutID);  // Clear timeout if participant responds in time
+
+                const stimImg = jsPsych.evaluateTimelineVariable("stimImg");  // target image
+                const selectedImgHtml = data.choices[data.response];  // participant's selected image
+
+                if (selectedImgHtml) { // Ensure response was given
+                    const selectedImg = selectedImgHtml.match(/src="([^"]*)"/)[1]; // extract image filename
+
+                    // Determine accuracy
+                    data.accuracy = (selectedImg === stimImg) ? 'correct' : 'incorrect';
+                    data.imageSelected = selectedImg;
+                } else {
+                    data.accuracy = 'timeout'; // Mark trial as timeout
+                }
+
+                data.image = stimImg;
+                data.htmlImageSelected = selectedImgHtml || 'No Response';
+                data.trialCounterTest = trialCounterTest;
+                data.phase = "training";
+                data.condition = condition;
+                data.round = roundCounter;
+        }
+},
+
          // Feedback
         {
           type: jsPsychHtmlKeyboardResponse,
@@ -394,17 +548,23 @@ preloadDurations(globalStimuli).then(() => {
             const feedback = lastTrial.accuracy === 'correct' ? '<b> That is correct! </b> The description refers to this scene.' : '<b> That is incorrect! </b> The description refers to this scene.';
             return `<p style="text-align: center">${feedback}</p>`;
           },
-          trial_duration: 3000
+          trial_duration: function () {
+            //Use preloaded duration from timeline variable
+            return jsPsych.evaluateTimelineVariable('videoDuration') * 2 * 1000; // 2x duration in milliseconds
+            }
         }
         
     ],
-    timeline_variables: globalStimuli, // Use globalStimuli as timeline variables
+    timeline_variables: getStimuliSubset(conditionStimuli), // Use globalStimuli as timeline variables
     sample: {
         type: 'without-replacement',
         size: 9 // Set to the number of trials you want to sample
     }
 }
 
+
+
+let trialCounterTest = 0;  // Counter for trial numbers
 
 const test = {
     timeline: [
@@ -417,56 +577,189 @@ const test = {
                 return html;
             },
             choices: ['Click here when you are ready to record a description of this scene'],
-            prompt: " "
-        },
-        {
-  type: jsPsychMirrorCamera,
-  width: 500,
-  prompt: function(){
-                const html = `
-                    <img src="${jsPsych.evaluateTimelineVariable('stimImg')}" style="width:200px; height:auto;">
-                    <p style="text-align: center">
-                    Click 'Continue' when you are finished recording your video description of this scene
-                    </p>`;
-                return html;
+            prompt: " ",
+            data: function() {
+                trialCounterTest++; // Increment trial number
+                return { trialCounterTest: trialCounterTest }; // Save trial number
             },
-  extensions: [{type: jsPsychExtensionRecordVideo}]
+             on_load: function() {
+                timeoutID = setTimeout(() => {
+                    jsPsych.abortExperiment(timeoutmessage);
+                    }, timeoutms);
+            },
+            on_finish: function(data) {
+                clearTimeout(timeoutID);  // Clear timeout if participant responds in time
+
+                const stimImg = jsPsych.evaluateTimelineVariable("stimImg");
+                data.image = stimImg;
+                data.phase = "test";
+                data.round = roundCounter;
+            }
+        },
+
+
+{
+    type: jsPsychHtmlButtonResponse,
+      width: 500,
+      choices: ['Continue'],
+      stimulus: function(){
+                    const html = `
+                        <p style="text-align: center">
+                        <video id="mirror-camera" autoplay playsinline style="width: 400px; transform: scaleX(-1);"></video>
+                        </p>
+                        <img src="${jsPsych.evaluateTimelineVariable('stimImg')}" style="width:200px; height:auto;">
+                        <p style="text-align: center">
+                        Click 'Continue' when you are finished recording your video description of this scene
+                        </p>`;
+                    return html;
+                },
+      extensions: [{type: jsPsychExtensionRecordVideo}],
+      data: function() {
+            return { trialCounterTest: trialCounterTest };
+        },
+        on_load: function() {
+            // Start the mirrored camera when the trial loads
+            timeoutID = setTimeout(() => {
+                jsPsych.abortExperiment(timeoutmessage);
+                }, timeoutms);
+
+            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                const videoElement = document.getElementById("mirror-camera");
+                videoElement.srcObject = stream;
+            }).catch(err => {
+                console.error("Camera error:", err);
+            });
+        },
+        on_finish: function(data) {  
+            clearTimeout(timeoutID);  // Clear timeout if participant responds in time 
+
+            const stimImg = jsPsych.evaluateTimelineVariable("stimImg");
+
+            data.image = stimImg;
+            data.phase = "test";
+            data.round = roundCounter;
+            
+            // Check if data recording is available
+            if (data.record_video_data) {
+                //data.video_data = data.record_video_data; // Save it in a custom variable
+                console.log("Video data saved:", data.video_data);
+            } else {
+                console.warn("No video data recorded for this trial.");
+            }
+
+            // Stop the camera when the trial finishes
+            const videoElement = document.getElementById("mirror-camera"); 
+            if (videoElement && videoElement.srcObject) {
+                let tracks = videoElement.srcObject.getTracks();
+                tracks.forEach(track => track.stop()); // Stop the camera stream
+            }
         }
+}
     ],
-    timeline_variables: globalStimuli,
+    timeline_variables: catsGlobalStimuli,
         sample: {
         type: 'without-replacement',
         size: 18
     }
 };
 
+var posttestintro = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: function(){
+                const html = `
+                <p style="text-align: center">
+                Thank you for taking part in the experiment!
+                    </p>
+
+                <p style="text-align: center">
+                We have a few short questions about your experience. After you will be redirected to Prolific Academic.
+                </p>
+               `;
+
+                return html;
+            },
+  choices: ['Continue'],
+};
+
+const posttestlikertdifficulty = {
+  type: jsPsychSurveyLikert,
+  questions: [
+    {
+      prompt: "How difficult did you find the experiment?", 
+      labels: [
+        "Very easy", 
+        "Easy", 
+        "Neutral", 
+        "Difficult", 
+        "Very difficult"
+      ]
+    }
+  ]
+};
+
+var posttestdifficultytext = {
+  type: jsPsychSurveyText,
+    questions: [
+    {prompt: 'What did you find difficult about the experiment?', name: 'difficulty', rows: 5},
+  ]
+};
+
+const posttestlikertinteresting = {
+  type: jsPsychSurveyLikert,
+  questions: [
+    {
+      prompt: "How interesting did you find the experiment?", 
+      labels: [
+        "Very boring", 
+        "Boring", 
+        "Neutral", 
+        "Interesting", 
+        "Very interesting"
+      ]
+    }
+  ]
+};
+
+var posttestinterestingtext = {
+  type: jsPsychSurveyText,
+    questions: [
+    {prompt: 'What did you find interesting about the experiment?', name: 'interesting', rows: 5},
+  ]
+};
+
+var posttestothertext = {
+  type: jsPsychSurveyText,
+    questions: [
+    {prompt: 'Do you have any other feedback about the experiment?', name: 'other-feedback', rows: 5}
+  ]
+};
+
+const posttestquestions = {
+    timeline: [posttestintro, posttestlikertdifficulty, posttestdifficultytext, posttestlikertinteresting, posttestinterestingtext, posttestothertext],
+};
 
 const outro = {
-    type: jsPsychHtmlButtonResponse,
-    css_classes: ['set-margins', 'center-text'],
-    stimulus: `
-
-<div id="title" class="center-text">
-    <h2>Thank you!</h2>
-    </div>
-
-    <div id="consent" class="set-margins">
-
-  <p>
-  Thank you for taking part in this experiment. If you have any questions please get in touch with us via email at a.schembri@bham.ac.uk
-  </p>
-
-  <p>
-You will now be redirected to Prolific.
-  </p>
-
- </div>`
-,
-choices: ["Complete study"]
+    type: jsPsychExternalHtml,
+    url: 'outro_page.html', // Path to consent HTML file
+    cont_btn: 'continue-button', // Button to continue
 };
 
 
-const timeline = [info_brochure, consent, full_screen, init_camera, how_video_should_be_example, camera_practice, preload, training, test, outro]
+let roundCounter = 0; // Tracks rounds (0-4)
+
+// Wrap training and test inside a looped timeline for round tracking
+const training_test_block = {
+    timeline: [training, test], // Increment counter at start of each round
+    repetitions: 1, // Run 4 rounds (rounds 0-3)
+    on_timeline_start: function() {
+        roundCounter++; // Increment counter at the start of each round
+    }
+};
+
+
+const timeline = [info_brochure, consent, full_screen, init_camera, how_video_should_be_example, camera_practice, begin_experiment, preload, training_test_block, posttestquestions, outro]
+
+//const timeline = [info_brochure, init_camera, how_video_should_be_example, full_screen, outro]
 
 
     /* start the experiment!! */
