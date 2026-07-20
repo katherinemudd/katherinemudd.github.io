@@ -83,6 +83,25 @@ body {
   border-bottom: none;
 }
 
+.about-row {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.about-photo {
+  flex-shrink: 0;
+}
+
+.about-text {
+  flex: 1;
+}
+
+.about-text h3 {
+  margin-top: 0;
+}
+
 
 
 
